@@ -18,32 +18,40 @@ end
 
 def merge_terms(days_stream, alive_terms, room_type)
   alive_stream = []
-  reservations_length = {}
+  reservation_length = {}
+  time_from_booking = {}
   alive_terms.each {|alive_term|
     date_from = Date.parse(alive_term[:checkin_date])
     date_to = Date.parse(alive_term[:checkout_date])
     days = (date_from..date_to).map(&:to_s)
     alive_stream.concat days
-    alive_stream.each {|day|
-      reservations_length[day] = days.length
+    days.each {|day|
+      reservation_length[day] = days.length
+      time_from_booking[day] = Date.parse(alive_term[:checkin_date]).mjd - Date.parse(alive_term[:booking_date]).mjd
     }
   }
   dead_counter = 0
+  reserved_length = 0
   return days_stream.map {|day|
     {:date => day, :is_dead => alive_stream.include?(day) == false, :room_type => room_type}
   }.map {|day|
     if day[:is_dead] == true
       dead_counter += 1
+      reserved_length = 0
     else
       dead_counter = 0
+      reserved_length += 1
     end
     day[:dead_counter] = dead_counter
+    day[:reserved_length] = reserved_length
     day
   }.map{ |day|
     if day[:is_dead] == false
-      day[:reservations_length] = reservations_length[day[:date]]
+      day[:reservation_length] = reservation_length[day[:date]]
+      day[:time_from_booking] = time_from_booking[day[:date]]
     else
-      day[:reservations_length] = 0
+      day[:reservation_length] = 0
+      day[:time_from_booking] = 0
     end
     day
   }
@@ -51,7 +59,8 @@ end
 
 
 #data_set = CSV.read('Bodea_Choice_based_Revenue_Management_Data_Set_Hotel_1.csv')
-data_set = CSV.read('dataset4.csv')
+data_set_name = 'dataset4.csv'
+data_set = CSV.read(data_set_name)
 grouped_by_room_type = Hash.new
 first = true
 data_set.each {|row|
@@ -74,9 +83,8 @@ is_dead_classified = grouped_by_room_type.map {|room_type, alive_terms|
   create_days_stream_and_merge_alive_terms(alive_terms, room_type)
 }.flatten
 
-serialize = is_dead_classified.reduce("room_type,week_number,is_dead,day_in_week,dead_counter,reservations_length") {|reduce, flat|
-  reduce += "#{flat[:room_type].dup.sub!(/([0-9 ]+)(Smoking|Non-Smoking)/, '')},#{Date.parse(flat[:date]).cweek},#{flat[:is_dead]},#{Date.parse(flat[:date]).wday},#{flat[:dead_counter]},#{flat[:reservations_length]}\n"
+serialize = is_dead_classified.reduce("room_type,week_number,is_dead,day_in_week,dead_counter,reservation_length,time_from_booking,reserved_length\n") {|reduce, flat|
+  reduce += "#{flat[:room_type].dup.sub!(/([0-9 ]+)(Smoking|Non-Smoking)/, '')},#{Date.parse(flat[:date]).cweek},#{flat[:is_dead]},#{Date.parse(flat[:date]).wday},#{flat[:dead_counter]},#{flat[:reservation_length]},#{flat[:time_from_booking]},#{flat[:reserved_length]}\n"
 }
-puts serialize
-# File.open(yourfile, 'w') { |file| file.write("your text") }
+File.open("ML_"+data_set_name, 'w') { |file| file.write(serialize) }
 
