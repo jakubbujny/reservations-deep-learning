@@ -71,7 +71,8 @@ data_set.each {|row|
   booking_date = row[4]
   checkin_date = row[5]
   checkout_date = row[6]
-  room_type = row[15]
+  room_type = row[15].dup.sub!(/([0-9 ]+)(Smoking|Non-Smoking)/, '')
+  room_type = room_type != nil && room_type.length > 0 ? room_type : "Unknown type"
   to_add = {:booking_date => transform_to_date(booking_date), :checkin_date => transform_to_date(checkin_date), :checkout_date => transform_to_date(checkout_date)}
   if grouped_by_room_type.key?(room_type)
     grouped_by_room_type[room_type].push(to_add)
@@ -84,7 +85,7 @@ is_dead_classified = grouped_by_room_type.map {|room_type, alive_terms|
 }.flatten
 
 serialize = is_dead_classified.reduce("room_type,week_number,is_dead,day_in_week,dead_counter,reservation_length,time_from_booking,reserved_length\n") {|reduce, flat|
-  reduce += "#{flat[:room_type].dup.sub!(/([0-9 ]+)(Smoking|Non-Smoking)/, '')},#{Date.parse(flat[:date]).cweek},#{flat[:is_dead]},#{Date.parse(flat[:date]).wday},#{flat[:dead_counter]},#{flat[:reservation_length]},#{flat[:time_from_booking]},#{flat[:reserved_length]}\n"
+  reduce += "#{flat[:room_type].chars.map(&:ord)&.reduce{|acc, char| acc +=char}},#{Date.parse(flat[:date]).cweek},#{(flat[:is_dead] ? 1 : 0)},#{Date.parse(flat[:date]).wday},#{flat[:dead_counter]},#{flat[:reservation_length]},#{flat[:time_from_booking]},#{flat[:reserved_length]}\n"
 }
 File.open("ML_"+data_set_name, 'w') { |file| file.write(serialize) }
 
