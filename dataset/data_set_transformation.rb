@@ -59,7 +59,7 @@ end
 
 
 #data_set = CSV.read('Bodea_Choice_based_Revenue_Management_Data_Set_Hotel_1.csv')
-data_set_name = 'dataset4.csv'
+data_set_name = ARGV[0]
 data_set = CSV.read(data_set_name)
 grouped_by_room_type = Hash.new
 first = true
@@ -84,8 +84,9 @@ is_dead_classified = grouped_by_room_type.map {|room_type, alive_terms|
   create_days_stream_and_merge_alive_terms(alive_terms, room_type)
 }.flatten
 
-serialize = is_dead_classified.reduce("room_type,week_number,is_dead,day_in_week,dead_counter,reservation_length,time_from_booking,reserved_length\n") {|reduce, flat|
-  reduce += "#{flat[:room_type].chars.map(&:ord)&.reduce{|acc, char| acc +=char}},#{Date.parse(flat[:date]).cweek},#{(flat[:is_dead] ? 1 : 0)},#{Date.parse(flat[:date]).wday},#{flat[:dead_counter]},#{flat[:reservation_length]},#{flat[:time_from_booking]},#{flat[:reserved_length]}\n"
+# room_type,week_number,day_in_week,dead_counter,reservation_length,time_from_booking,reserved_length,is_dead
+serialize = is_dead_classified.reduce("") {|reduce, flat|
+  reduce += "#{flat[:room_type].chars.map(&:ord)&.reduce{|acc, char| acc +=char}},#{Date.parse(flat[:date]).cweek},#{Date.parse(flat[:date]).wday},#{flat[:dead_counter]},#{flat[:reservation_length]},#{flat[:time_from_booking]},#{flat[:reserved_length]},#{flat[:is_dead]}\n"
 }
 File.open("ML_"+data_set_name, 'w') { |file| file.write(serialize) }
 
