@@ -5,8 +5,8 @@ from keras.models import Sequential
 from keras.layers import Dense, Flatten
 from keras.wrappers.scikit_learn import KerasClassifier
 from keras.utils import np_utils
-from sklearn.cross_validation import cross_val_score
-from sklearn.cross_validation import KFold
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.pipeline import Pipeline
 
@@ -19,7 +19,7 @@ dataset     = dataframe.values
 
 print(dataset)
 
-X = dataset[:,0:4].astype(int)
+X = dataset[:,0:7].astype(int)
 Y = dataset[:,8]
 
 # Preprocess the labels
@@ -37,15 +37,16 @@ dummy_y = np_utils.to_categorical(encoded_Y)
 
 def baseline_model():
     model = Sequential()
-    model.add(Dense(4, input_dim=4, init='normal', activation='relu'))
-    model.add(Dense(2, init='normal', activation='sigmoid'))
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    model.add(Dense(24, input_dim=7, activation='tanh'))
+    model.add(Dense(64, activation='tanh'))
+    model.add(Dense(2, activation='softmax'))
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     return model
 
 estimator = KerasClassifier(build_fn=baseline_model, nb_epoch=200, batch_size=5, verbose=0)
 
-kfold = KFold(n=len(X), n_folds=10, shuffle=True, random_state=0)
+kfold = KFold(n_splits=20, shuffle=True, random_state=0)
 results = cross_val_score(estimator, X, dummy_y, cv=kfold)
 print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
 
