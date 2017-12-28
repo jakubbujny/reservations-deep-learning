@@ -1,34 +1,52 @@
-import tensorflow as tf
-import numpy
-import pandas as pd
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.optimizers import SGD
-import time
-from sklearn.model_selection import train_test_split
+import numpy
+import pandas
+from keras.models import Sequential
+from keras.layers import Dense, Flatten
+from keras.wrappers.scikit_learn import KerasClassifier
+from keras.utils import np_utils
+from sklearn.cross_validation import cross_val_score
+from sklearn.cross_validation import KFold
+from sklearn.preprocessing import LabelEncoder
+from sklearn.pipeline import Pipeline
 
-import tensorflow as tf
-from keras import backend as K
 
-dataset_file = "../dataset/ML_dataset4.csv"
-num_lines_data = sum(1 for line in open(dataset_file)) - 1
-features = numpy.int32(pd.read_csv(dataset_file, usecols=[0, 1, 3, 4, 5, 6, 7], skiprows=[0], header=None).values)
-labels = numpy.int32(pd.read_csv(dataset_file, usecols=[2], skiprows=[0], header=None).values)
+dataset_file = "../dataset/ML_dataset1.csv"
+numpy.random.seed(0)
+
+dataframe   = pandas.read_csv(dataset_file, header=None)
+dataset     = dataframe.values
+
+print(dataset)
+
+X = dataset[:,0:4].astype(int)
+Y = dataset[:,8]
+
+# Preprocess the labels
+
+# LabelEncoder from scikit-learn turns each text label
+# (e.g "Iris-setosa", "Iris-versicolor") into a vector
+# In this case, each of the three labels are just assigned
+# a number from 0-2.
+encoder = LabelEncoder()
+encoder.fit(Y)
+encoded_Y = encoder.transform(Y)
+
+# to_categorical converts the numbered labels into a one-hot vector
+dummy_y = np_utils.to_categorical(encoded_Y)
+
+def baseline_model():
+    model = Sequential()
+    model.add(Dense(4, input_dim=4, init='normal', activation='relu'))
+    model.add(Dense(2, init='normal', activation='sigmoid'))
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    return model
+
+estimator = KerasClassifier(build_fn=baseline_model, nb_epoch=200, batch_size=5, verbose=0)
+
+kfold = KFold(n=len(X), n_folds=10, shuffle=True, random_state=0)
+results = cross_val_score(estimator, X, dummy_y, cv=kfold)
+print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
 
 
-x_train, x_test, y_train, y_test = train_test_split(features, labels, test_size=0.33, random_state=int(time.time()))
-
-model = Sequential()
-model.add(Dense(24, activation='tanh', input_shape=x_train.shape[1:]))
-model.add(Dense(64, activation='tanh', input_shape=x_train.shape[1:]))
-model.add(Dense(1, activation='relu'))
-
-sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-model.compile(loss='binary_crossentropy',
-              optimizer=sgd,
-              metrics=['accuracy'])
-
-model.fit(x_train, y_train,
-          epochs=100,
-          batch_size=128)
-score = model.evaluate(x_test, y_test, batch_size=128)
