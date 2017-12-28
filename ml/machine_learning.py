@@ -16,11 +16,8 @@ numpy.random.seed(0)
 
 dataframe   = pandas.read_csv(dataset_file, header=None)
 dataset     = dataframe.values
-
-print(dataset)
-
-X = dataset[:,0:7].astype(int)
-Y = dataset[:,8]
+X = dataset[:,0:dataset.shape[1]-2].astype(int)
+Y = dataset[:,dataset.shape[1]-1]
 
 # Preprocess the labels
 
@@ -37,7 +34,7 @@ dummy_y = np_utils.to_categorical(encoded_Y)
 
 def baseline_model():
     model = Sequential()
-    model.add(Dense(24, input_dim=7, activation='tanh'))
+    model.add(Dense(24, input_dim=dataset.shape[1]-2, activation='tanh'))
     model.add(Dense(64, activation='tanh'))
     model.add(Dense(2, activation='softmax'))
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -48,6 +45,6 @@ estimator = KerasClassifier(build_fn=baseline_model, nb_epoch=200, batch_size=5,
 
 kfold = KFold(n_splits=20, shuffle=True, random_state=0)
 results = cross_val_score(estimator, X, dummy_y, cv=kfold)
-print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
+print("%0.6f,%0.6f" % (results.mean(), results.std()))
 
 
